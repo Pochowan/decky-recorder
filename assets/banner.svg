@@ -1,0 +1,249 @@
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="1600" height="900" viewBox="0 0 1600 900">
+  <!-- Banner de decky-recorder (en). Mismo estilo que el de decky-autohdr; todo vectorial y editable. -->
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#140b1f"/>
+      <stop offset="1" stop-color="#05060f"/>
+    </linearGradient>
+    <radialGradient id="glowRed" cx="0.5" cy="0.5" r="0.5">
+      <stop offset="0" stop-color="#ef4444" stop-opacity="0.50"/>
+      <stop offset="1" stop-color="#ef4444" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="glowPurple" cx="0.5" cy="0.5" r="0.5">
+      <stop offset="0" stop-color="#8b5cf6" stop-opacity="0.55"/>
+      <stop offset="1" stop-color="#8b5cf6" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="glowCyan" cx="0.5" cy="0.5" r="0.5">
+      <stop offset="0" stop-color="#22d3ee" stop-opacity="0.35"/>
+      <stop offset="1" stop-color="#22d3ee" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="streak" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#ffffff" stop-opacity="0"/>
+      <stop offset="0.5" stop-color="#ffffff" stop-opacity="0.55"/>
+      <stop offset="1" stop-color="#ffffff" stop-opacity="0"/>
+    </linearGradient>
+
+    <!-- Texto -->
+    <linearGradient id="hot" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#f43f5e"/>
+      <stop offset="0.5" stop-color="#fb923c"/>
+      <stop offset="1" stop-color="#facc15"/>
+    </linearGradient>
+    <linearGradient id="linuxGrad" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#c084fc"/>
+      <stop offset="1" stop-color="#f472b6"/>
+    </linearGradient>
+    <filter id="textShadow" x="-10%" y="-30%" width="120%" height="160%">
+      <feGaussianBlur in="SourceAlpha" stdDeviation="6"/>
+      <feOffset dy="6" result="b"/>
+      <feFlood flood-color="#000" flood-opacity="0.6"/>
+      <feComposite in2="b" operator="in"/>
+      <feMerge><feMergeNode/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+
+    <!-- Consola -->
+    <linearGradient id="body" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#2a2d36"/>
+      <stop offset="0.5" stop-color="#1b1d24"/>
+      <stop offset="1" stop-color="#111217"/>
+    </linearGradient>
+    <linearGradient id="bodyEdge" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#5b5f6b"/>
+      <stop offset="1" stop-color="#1a1b21"/>
+    </linearGradient>
+    <radialGradient id="stickTop" cx="0.4" cy="0.35" r="0.7">
+      <stop offset="0" stop-color="#3a3d47"/>
+      <stop offset="1" stop-color="#121318"/>
+    </radialGradient>
+    <linearGradient id="rgbEdge" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#f43f5e"/>
+      <stop offset="0.5" stop-color="#a855f7"/>
+      <stop offset="1" stop-color="#22d3ee"/>
+    </linearGradient>
+
+    <!-- Escena del juego (coordenadas locales 640x400): atardecer en ruinas -->
+    <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#312e81"/>
+      <stop offset="0.45" stop-color="#be185d"/>
+      <stop offset="0.75" stop-color="#f97316"/>
+      <stop offset="1" stop-color="#fde68a"/>
+    </linearGradient>
+    <radialGradient id="sunGlow" cx="0.5" cy="0.5" r="0.5">
+      <stop offset="0" stop-color="#fffbeb" stop-opacity="1"/>
+      <stop offset="0.3" stop-color="#fde68a" stop-opacity="0.85"/>
+      <stop offset="1" stop-color="#fb923c" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="ground" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#3f2a2a"/>
+      <stop offset="1" stop-color="#140c10"/>
+    </linearGradient>
+    <linearGradient id="far" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#7c2d5a"/>
+      <stop offset="1" stop-color="#4c1d3d"/>
+    </linearGradient>
+    <linearGradient id="vignette" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#000" stop-opacity="0.35"/>
+      <stop offset="0.25" stop-color="#000" stop-opacity="0"/>
+      <stop offset="0.7" stop-color="#000" stop-opacity="0"/>
+      <stop offset="1" stop-color="#000" stop-opacity="0.55"/>
+    </linearGradient>
+    <filter id="bloom" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="14"/>
+    </filter>
+    <filter id="chipShadow" x="-20%" y="-40%" width="140%" height="180%">
+      <feGaussianBlur in="SourceAlpha" stdDeviation="4"/>
+      <feOffset dy="3" result="b"/>
+      <feFlood flood-color="#000" flood-opacity="0.5"/>
+      <feComposite in2="b" operator="in"/>
+      <feMerge><feMergeNode/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+    <clipPath id="screenClip"><rect x="0" y="0" width="640" height="400" rx="10"/></clipPath>
+  </defs>
+
+  <!-- ====== Fondo ====== -->
+  <rect width="1600" height="900" fill="url(#bg)"/>
+  <ellipse cx="180" cy="760" rx="420" ry="300" fill="url(#glowPurple)"/>
+  <ellipse cx="1450" cy="720" rx="420" ry="320" fill="url(#glowRed)"/>
+  <ellipse cx="1300" cy="120" rx="380" ry="220" fill="url(#glowCyan)"/>
+  <ellipse cx="260" cy="110" rx="360" ry="200" fill="url(#glowRed)" opacity="0.6"/>
+  <g opacity="0.7">
+    <rect x="-100" y="430" width="700" height="3" fill="url(#streak)" transform="rotate(-14 250 430)"/>
+    <rect x="1000" y="470" width="700" height="3" fill="url(#streak)" transform="rotate(14 1350 470)"/>
+    <rect x="-50" y="560" width="600" height="2" fill="url(#streak)" transform="rotate(-8 250 560)"/>
+    <rect x="1050" y="600" width="600" height="2" fill="url(#streak)" transform="rotate(8 1350 600)"/>
+  </g>
+
+  <!-- ====== Título ====== -->
+  <g filter="url(#textShadow)" font-family="'Segoe UI Black', 'Arial Black', 'Segoe UI', Arial, sans-serif" font-weight="900" text-anchor="middle">
+    <text x="800" y="165" font-size="92" letter-spacing="-2">
+      <tspan fill="#ffffff">Record or </tspan><tspan fill="url(#hot)">stream live</tspan>
+    </text>
+    <text x="800" y="300" font-size="96" letter-spacing="-1">
+      <tspan fill="#ffffff">on </tspan><tspan fill="url(#linuxGrad)">Linux</tspan><tspan fill="#ffffff"> Handhelds</tspan>
+    </text>
+  </g>
+
+  <!-- ====== Consola genérica ====== -->
+  <ellipse cx="800" cy="885" rx="620" ry="30" fill="#000" opacity="0.6" filter="url(#bloom)"/>
+  <rect x="250" y="352" width="200" height="34" rx="16" fill="#23252d" stroke="#3a3d47" stroke-width="2"/>
+  <rect x="1150" y="352" width="200" height="34" rx="16" fill="#23252d" stroke="#3a3d47" stroke-width="2"/>
+  <rect x="150" y="370" width="1300" height="505" rx="150" fill="url(#bodyEdge)"/>
+  <rect x="155" y="374" width="1290" height="496" rx="146" fill="url(#body)"/>
+  <rect x="300" y="868" width="1000" height="3" rx="1.5" fill="url(#rgbEdge)" opacity="0.8"/>
+
+  <!-- marco de la pantalla (16:10) -->
+  <rect x="460" y="410" width="680" height="440" rx="22" fill="#08090c"/>
+  <rect x="460" y="410" width="680" height="440" rx="22" fill="none" stroke="#2c2f38" stroke-width="2"/>
+
+  <!-- pantalla: 640x400 en (480,430) -->
+  <g transform="translate(480 430)">
+    <g clip-path="url(#screenClip)">
+      <rect width="640" height="400" fill="url(#sky)"/>
+      <circle cx="420" cy="230" r="110" fill="url(#sunGlow)"/>
+      <circle cx="420" cy="230" r="34" fill="#fffbeb"/>
+      <!-- ruinas lejanas -->
+      <path d="M0,260 L0,200 L40,200 L40,170 L70,170 L70,215 L120,215 L120,150 L135,140 L150,150 L150,230 L210,230 L210,190 L250,190 L250,240 L640,240 L640,180 L600,180 L600,150 L570,165 L560,200 L520,200 L520,250 Z" fill="url(#far)"/>
+      <!-- edificios en ruinas cercanos -->
+      <g fill="#1c1117">
+        <path d="M0,330 L0,150 L30,150 L30,120 L55,128 L60,165 L95,165 L95,330 Z"/>
+        <path d="M500,330 L500,175 L520,160 L540,172 L560,140 L585,150 L590,190 L640,190 L640,330 Z"/>
+      </g>
+      <g fill="#f59e0b" opacity="0.85">
+        <rect x="18" y="190" width="14" height="20"/><rect x="58" y="200" width="14" height="20" opacity="0.6"/>
+        <rect x="528" y="210" width="16" height="22"/><rect x="590" y="220" width="14" height="20" opacity="0.6"/>
+      </g>
+      <!-- suelo -->
+      <path d="M0,300 C150,285 300,290 420,296 C520,300 590,292 640,288 L640,400 L0,400 Z" fill="url(#ground)"/>
+      <!-- sacos terreros -->
+      <g fill="#6b4f3a" stroke="#2a1d14" stroke-width="2">
+        <rect x="150" y="300" width="46" height="22" rx="10"/><rect x="194" y="300" width="46" height="22" rx="10"/>
+        <rect x="172" y="282" width="46" height="22" rx="10"/>
+      </g>
+      <!-- personaje (silueta) -->
+      <g fill="#0d0a0c">
+        <circle cx="300" cy="268" r="14"/>
+        <path d="M282,284 L318,284 L324,330 L312,330 L308,352 L292,352 L288,330 L276,330 Z"/>
+        <rect x="314" y="276" width="70" height="7" rx="3" transform="rotate(-18 314 276)"/>
+      </g>
+      <!-- mira -->
+      <g stroke="#ffffff" stroke-width="2" opacity="0.85">
+        <line x1="320" y1="188" x2="320" y2="198"/><line x1="320" y1="212" x2="320" y2="222"/>
+        <line x1="303" y1="205" x2="313" y2="205"/><line x1="327" y1="205" x2="337" y2="205"/>
+      </g>
+      <rect width="640" height="400" fill="url(#vignette)"/>
+
+      <!-- ===== superposiciones del plugin ===== -->
+      <g font-family="'Segoe UI', Arial, sans-serif" font-weight="800" filter="url(#chipShadow)">
+        <!-- REC -->
+        <rect x="16" y="16" width="168" height="40" rx="10" fill="#111318" opacity="0.88"/>
+        <circle cx="38" cy="36" r="9" fill="#ef4444"/>
+        <circle cx="38" cy="36" r="15" fill="#ef4444" opacity="0.35" filter="url(#bloom)"/>
+        <text x="56" y="44" font-size="22" fill="#ffffff">REC</text>
+        <text x="110" y="44" font-size="20" fill="#cbd5e1" font-weight="600">04:48</text>
+        <!-- EN DIRECTO -->
+        <g transform="translate(624 16)">
+          <rect x="-116" y="0" width="116" height="40" rx="10" fill="#dc2626"/>
+          <g transform="translate(-100 9)" fill="none" stroke="#ffffff" stroke-width="2.4" stroke-linecap="round">
+            <circle cx="11" cy="11" r="3" fill="#ffffff" stroke="none"/>
+            <path d="M5,5 A9,9 0 0 0 5,17"/><path d="M17,5 A9,9 0 0 1 17,17"/>
+            <path d="M1,1 A15,15 0 0 0 1,21"/><path d="M21,1 A15,15 0 0 1 21,21"/>
+          </g>
+          <text x="-14" y="28" font-size="20" fill="#ffffff" text-anchor="end">LIVE</text>
+        </g>
+        <!-- FPS -->
+        <rect x="16" y="64" width="168" height="32" rx="8" fill="#111318" opacity="0.8"/>
+        <text x="100" y="86" font-size="17" fill="#4ade80" text-anchor="middle">144 FPS · H.264</text>
+        <!-- aviso con QR -->
+        <g transform="translate(336 268)">
+          <rect width="288" height="116" rx="12" fill="#1f2937" opacity="0.95" stroke="#38bdf8" stroke-opacity="0.6" stroke-width="2"/>
+          <rect x="12" y="12" width="92" height="92" rx="6" fill="#ffffff"/>
+          <path d="M0.0 0.0h3.2v3.2h-3.2zM3.2 0.0h3.2v3.2h-3.2zM6.4 0.0h3.2v3.2h-3.2zM9.6 0.0h3.2v3.2h-3.2zM12.8 0.0h3.2v3.2h-3.2zM16.0 0.0h3.2v3.2h-3.2zM19.2 0.0h3.2v3.2h-3.2zM25.6 0.0h3.2v3.2h-3.2zM28.8 0.0h3.2v3.2h-3.2zM32.0 0.0h3.2v3.2h-3.2zM35.2 0.0h3.2v3.2h-3.2zM38.4 0.0h3.2v3.2h-3.2zM44.8 0.0h3.2v3.2h-3.2zM48.0 0.0h3.2v3.2h-3.2zM57.6 0.0h3.2v3.2h-3.2zM60.8 0.0h3.2v3.2h-3.2zM64.0 0.0h3.2v3.2h-3.2zM67.2 0.0h3.2v3.2h-3.2zM70.4 0.0h3.2v3.2h-3.2zM73.6 0.0h3.2v3.2h-3.2zM76.8 0.0h3.2v3.2h-3.2zM0.0 3.2h3.2v3.2h-3.2zM19.2 3.2h3.2v3.2h-3.2zM25.6 3.2h3.2v3.2h-3.2zM28.8 3.2h3.2v3.2h-3.2zM32.0 3.2h3.2v3.2h-3.2zM38.4 3.2h3.2v3.2h-3.2zM41.6 3.2h3.2v3.2h-3.2zM48.0 3.2h3.2v3.2h-3.2zM51.2 3.2h3.2v3.2h-3.2zM57.6 3.2h3.2v3.2h-3.2zM76.8 3.2h3.2v3.2h-3.2zM0.0 6.4h3.2v3.2h-3.2zM6.4 6.4h3.2v3.2h-3.2zM9.6 6.4h3.2v3.2h-3.2zM12.8 6.4h3.2v3.2h-3.2zM19.2 6.4h3.2v3.2h-3.2zM35.2 6.4h3.2v3.2h-3.2zM48.0 6.4h3.2v3.2h-3.2zM57.6 6.4h3.2v3.2h-3.2zM64.0 6.4h3.2v3.2h-3.2zM67.2 6.4h3.2v3.2h-3.2zM70.4 6.4h3.2v3.2h-3.2zM76.8 6.4h3.2v3.2h-3.2zM0.0 9.6h3.2v3.2h-3.2zM6.4 9.6h3.2v3.2h-3.2zM9.6 9.6h3.2v3.2h-3.2zM12.8 9.6h3.2v3.2h-3.2zM19.2 9.6h3.2v3.2h-3.2zM28.8 9.6h3.2v3.2h-3.2zM32.0 9.6h3.2v3.2h-3.2zM35.2 9.6h3.2v3.2h-3.2zM41.6 9.6h3.2v3.2h-3.2zM44.8 9.6h3.2v3.2h-3.2zM57.6 9.6h3.2v3.2h-3.2zM64.0 9.6h3.2v3.2h-3.2zM67.2 9.6h3.2v3.2h-3.2zM70.4 9.6h3.2v3.2h-3.2zM76.8 9.6h3.2v3.2h-3.2zM0.0 12.8h3.2v3.2h-3.2zM6.4 12.8h3.2v3.2h-3.2zM9.6 12.8h3.2v3.2h-3.2zM12.8 12.8h3.2v3.2h-3.2zM19.2 12.8h3.2v3.2h-3.2zM25.6 12.8h3.2v3.2h-3.2zM48.0 12.8h3.2v3.2h-3.2zM57.6 12.8h3.2v3.2h-3.2zM64.0 12.8h3.2v3.2h-3.2zM67.2 12.8h3.2v3.2h-3.2zM70.4 12.8h3.2v3.2h-3.2zM76.8 12.8h3.2v3.2h-3.2zM0.0 16.0h3.2v3.2h-3.2zM19.2 16.0h3.2v3.2h-3.2zM25.6 16.0h3.2v3.2h-3.2zM28.8 16.0h3.2v3.2h-3.2zM38.4 16.0h3.2v3.2h-3.2zM41.6 16.0h3.2v3.2h-3.2zM44.8 16.0h3.2v3.2h-3.2zM48.0 16.0h3.2v3.2h-3.2zM51.2 16.0h3.2v3.2h-3.2zM57.6 16.0h3.2v3.2h-3.2zM76.8 16.0h3.2v3.2h-3.2zM0.0 19.2h3.2v3.2h-3.2zM3.2 19.2h3.2v3.2h-3.2zM6.4 19.2h3.2v3.2h-3.2zM9.6 19.2h3.2v3.2h-3.2zM12.8 19.2h3.2v3.2h-3.2zM16.0 19.2h3.2v3.2h-3.2zM19.2 19.2h3.2v3.2h-3.2zM38.4 19.2h3.2v3.2h-3.2zM41.6 19.2h3.2v3.2h-3.2zM44.8 19.2h3.2v3.2h-3.2zM57.6 19.2h3.2v3.2h-3.2zM60.8 19.2h3.2v3.2h-3.2zM64.0 19.2h3.2v3.2h-3.2zM67.2 19.2h3.2v3.2h-3.2zM70.4 19.2h3.2v3.2h-3.2zM73.6 19.2h3.2v3.2h-3.2zM76.8 19.2h3.2v3.2h-3.2zM32.0 22.4h3.2v3.2h-3.2zM44.8 22.4h3.2v3.2h-3.2zM48.0 22.4h3.2v3.2h-3.2zM51.2 22.4h3.2v3.2h-3.2zM0.0 25.6h3.2v3.2h-3.2zM16.0 25.6h3.2v3.2h-3.2zM19.2 25.6h3.2v3.2h-3.2zM25.6 25.6h3.2v3.2h-3.2zM35.2 25.6h3.2v3.2h-3.2zM38.4 25.6h3.2v3.2h-3.2zM48.0 25.6h3.2v3.2h-3.2zM51.2 25.6h3.2v3.2h-3.2zM54.4 25.6h3.2v3.2h-3.2zM64.0 25.6h3.2v3.2h-3.2zM76.8 25.6h3.2v3.2h-3.2zM3.2 28.8h3.2v3.2h-3.2zM6.4 28.8h3.2v3.2h-3.2zM22.4 28.8h3.2v3.2h-3.2zM32.0 28.8h3.2v3.2h-3.2zM35.2 28.8h3.2v3.2h-3.2zM38.4 28.8h3.2v3.2h-3.2zM41.6 28.8h3.2v3.2h-3.2zM48.0 28.8h3.2v3.2h-3.2zM51.2 28.8h3.2v3.2h-3.2zM54.4 28.8h3.2v3.2h-3.2zM60.8 28.8h3.2v3.2h-3.2zM64.0 28.8h3.2v3.2h-3.2zM73.6 28.8h3.2v3.2h-3.2zM9.6 32.0h3.2v3.2h-3.2zM12.8 32.0h3.2v3.2h-3.2zM16.0 32.0h3.2v3.2h-3.2zM19.2 32.0h3.2v3.2h-3.2zM25.6 32.0h3.2v3.2h-3.2zM28.8 32.0h3.2v3.2h-3.2zM38.4 32.0h3.2v3.2h-3.2zM51.2 32.0h3.2v3.2h-3.2zM57.6 32.0h3.2v3.2h-3.2zM60.8 32.0h3.2v3.2h-3.2zM0.0 35.2h3.2v3.2h-3.2zM16.0 35.2h3.2v3.2h-3.2zM22.4 35.2h3.2v3.2h-3.2zM38.4 35.2h3.2v3.2h-3.2zM51.2 35.2h3.2v3.2h-3.2zM54.4 35.2h3.2v3.2h-3.2zM57.6 35.2h3.2v3.2h-3.2zM60.8 35.2h3.2v3.2h-3.2zM64.0 35.2h3.2v3.2h-3.2zM67.2 35.2h3.2v3.2h-3.2zM0.0 38.4h3.2v3.2h-3.2zM9.6 38.4h3.2v3.2h-3.2zM19.2 38.4h3.2v3.2h-3.2zM25.6 38.4h3.2v3.2h-3.2zM38.4 38.4h3.2v3.2h-3.2zM41.6 38.4h3.2v3.2h-3.2zM48.0 38.4h3.2v3.2h-3.2zM51.2 38.4h3.2v3.2h-3.2zM54.4 38.4h3.2v3.2h-3.2zM60.8 38.4h3.2v3.2h-3.2zM67.2 38.4h3.2v3.2h-3.2zM70.4 38.4h3.2v3.2h-3.2zM73.6 38.4h3.2v3.2h-3.2zM3.2 41.6h3.2v3.2h-3.2zM16.0 41.6h3.2v3.2h-3.2zM19.2 41.6h3.2v3.2h-3.2zM22.4 41.6h3.2v3.2h-3.2zM28.8 41.6h3.2v3.2h-3.2zM32.0 41.6h3.2v3.2h-3.2zM35.2 41.6h3.2v3.2h-3.2zM44.8 41.6h3.2v3.2h-3.2zM48.0 41.6h3.2v3.2h-3.2zM60.8 41.6h3.2v3.2h-3.2zM64.0 41.6h3.2v3.2h-3.2zM70.4 41.6h3.2v3.2h-3.2zM73.6 41.6h3.2v3.2h-3.2zM6.4 44.8h3.2v3.2h-3.2zM12.8 44.8h3.2v3.2h-3.2zM19.2 44.8h3.2v3.2h-3.2zM22.4 44.8h3.2v3.2h-3.2zM32.0 44.8h3.2v3.2h-3.2zM35.2 44.8h3.2v3.2h-3.2zM41.6 44.8h3.2v3.2h-3.2zM44.8 44.8h3.2v3.2h-3.2zM48.0 44.8h3.2v3.2h-3.2zM51.2 44.8h3.2v3.2h-3.2zM54.4 44.8h3.2v3.2h-3.2zM57.6 44.8h3.2v3.2h-3.2zM60.8 44.8h3.2v3.2h-3.2zM67.2 44.8h3.2v3.2h-3.2zM73.6 44.8h3.2v3.2h-3.2zM76.8 44.8h3.2v3.2h-3.2zM0.0 48.0h3.2v3.2h-3.2zM3.2 48.0h3.2v3.2h-3.2zM6.4 48.0h3.2v3.2h-3.2zM16.0 48.0h3.2v3.2h-3.2zM19.2 48.0h3.2v3.2h-3.2zM25.6 48.0h3.2v3.2h-3.2zM32.0 48.0h3.2v3.2h-3.2zM41.6 48.0h3.2v3.2h-3.2zM54.4 48.0h3.2v3.2h-3.2zM67.2 48.0h3.2v3.2h-3.2zM70.4 48.0h3.2v3.2h-3.2zM73.6 48.0h3.2v3.2h-3.2zM76.8 48.0h3.2v3.2h-3.2zM0.0 51.2h3.2v3.2h-3.2zM6.4 51.2h3.2v3.2h-3.2zM9.6 51.2h3.2v3.2h-3.2zM12.8 51.2h3.2v3.2h-3.2zM25.6 51.2h3.2v3.2h-3.2zM28.8 51.2h3.2v3.2h-3.2zM32.0 51.2h3.2v3.2h-3.2zM35.2 51.2h3.2v3.2h-3.2zM38.4 51.2h3.2v3.2h-3.2zM41.6 51.2h3.2v3.2h-3.2zM44.8 51.2h3.2v3.2h-3.2zM57.6 51.2h3.2v3.2h-3.2zM64.0 51.2h3.2v3.2h-3.2zM67.2 51.2h3.2v3.2h-3.2zM70.4 51.2h3.2v3.2h-3.2zM73.6 51.2h3.2v3.2h-3.2zM76.8 51.2h3.2v3.2h-3.2zM25.6 54.4h3.2v3.2h-3.2zM28.8 54.4h3.2v3.2h-3.2zM32.0 54.4h3.2v3.2h-3.2zM54.4 54.4h3.2v3.2h-3.2zM57.6 54.4h3.2v3.2h-3.2zM64.0 54.4h3.2v3.2h-3.2zM73.6 54.4h3.2v3.2h-3.2zM0.0 57.6h3.2v3.2h-3.2zM3.2 57.6h3.2v3.2h-3.2zM6.4 57.6h3.2v3.2h-3.2zM9.6 57.6h3.2v3.2h-3.2zM12.8 57.6h3.2v3.2h-3.2zM16.0 57.6h3.2v3.2h-3.2zM19.2 57.6h3.2v3.2h-3.2zM44.8 57.6h3.2v3.2h-3.2zM48.0 57.6h3.2v3.2h-3.2zM51.2 57.6h3.2v3.2h-3.2zM54.4 57.6h3.2v3.2h-3.2zM57.6 57.6h3.2v3.2h-3.2zM0.0 60.8h3.2v3.2h-3.2zM19.2 60.8h3.2v3.2h-3.2zM25.6 60.8h3.2v3.2h-3.2zM28.8 60.8h3.2v3.2h-3.2zM32.0 60.8h3.2v3.2h-3.2zM38.4 60.8h3.2v3.2h-3.2zM51.2 60.8h3.2v3.2h-3.2zM54.4 60.8h3.2v3.2h-3.2zM70.4 60.8h3.2v3.2h-3.2zM73.6 60.8h3.2v3.2h-3.2zM76.8 60.8h3.2v3.2h-3.2zM0.0 64.0h3.2v3.2h-3.2zM6.4 64.0h3.2v3.2h-3.2zM9.6 64.0h3.2v3.2h-3.2zM12.8 64.0h3.2v3.2h-3.2zM19.2 64.0h3.2v3.2h-3.2zM28.8 64.0h3.2v3.2h-3.2zM35.2 64.0h3.2v3.2h-3.2zM38.4 64.0h3.2v3.2h-3.2zM41.6 64.0h3.2v3.2h-3.2zM48.0 64.0h3.2v3.2h-3.2zM57.6 64.0h3.2v3.2h-3.2zM60.8 64.0h3.2v3.2h-3.2zM70.4 64.0h3.2v3.2h-3.2zM73.6 64.0h3.2v3.2h-3.2zM76.8 64.0h3.2v3.2h-3.2zM0.0 67.2h3.2v3.2h-3.2zM6.4 67.2h3.2v3.2h-3.2zM9.6 67.2h3.2v3.2h-3.2zM12.8 67.2h3.2v3.2h-3.2zM19.2 67.2h3.2v3.2h-3.2zM35.2 67.2h3.2v3.2h-3.2zM44.8 67.2h3.2v3.2h-3.2zM48.0 67.2h3.2v3.2h-3.2zM54.4 67.2h3.2v3.2h-3.2zM57.6 67.2h3.2v3.2h-3.2zM60.8 67.2h3.2v3.2h-3.2zM64.0 67.2h3.2v3.2h-3.2zM67.2 67.2h3.2v3.2h-3.2zM73.6 67.2h3.2v3.2h-3.2zM0.0 70.4h3.2v3.2h-3.2zM6.4 70.4h3.2v3.2h-3.2zM9.6 70.4h3.2v3.2h-3.2zM12.8 70.4h3.2v3.2h-3.2zM19.2 70.4h3.2v3.2h-3.2zM32.0 70.4h3.2v3.2h-3.2zM35.2 70.4h3.2v3.2h-3.2zM38.4 70.4h3.2v3.2h-3.2zM41.6 70.4h3.2v3.2h-3.2zM44.8 70.4h3.2v3.2h-3.2zM51.2 70.4h3.2v3.2h-3.2zM57.6 70.4h3.2v3.2h-3.2zM60.8 70.4h3.2v3.2h-3.2zM67.2 70.4h3.2v3.2h-3.2zM70.4 70.4h3.2v3.2h-3.2zM0.0 73.6h3.2v3.2h-3.2zM19.2 73.6h3.2v3.2h-3.2zM25.6 73.6h3.2v3.2h-3.2zM35.2 73.6h3.2v3.2h-3.2zM38.4 73.6h3.2v3.2h-3.2zM44.8 73.6h3.2v3.2h-3.2zM48.0 73.6h3.2v3.2h-3.2zM51.2 73.6h3.2v3.2h-3.2zM54.4 73.6h3.2v3.2h-3.2zM64.0 73.6h3.2v3.2h-3.2zM70.4 73.6h3.2v3.2h-3.2zM76.8 73.6h3.2v3.2h-3.2zM0.0 76.8h3.2v3.2h-3.2zM3.2 76.8h3.2v3.2h-3.2zM6.4 76.8h3.2v3.2h-3.2zM9.6 76.8h3.2v3.2h-3.2zM12.8 76.8h3.2v3.2h-3.2zM16.0 76.8h3.2v3.2h-3.2zM19.2 76.8h3.2v3.2h-3.2zM25.6 76.8h3.2v3.2h-3.2zM28.8 76.8h3.2v3.2h-3.2zM32.0 76.8h3.2v3.2h-3.2zM35.2 76.8h3.2v3.2h-3.2zM38.4 76.8h3.2v3.2h-3.2zM41.6 76.8h3.2v3.2h-3.2zM44.8 76.8h3.2v3.2h-3.2zM48.0 76.8h3.2v3.2h-3.2zM60.8 76.8h3.2v3.2h-3.2zM64.0 76.8h3.2v3.2h-3.2zM70.4 76.8h3.2v3.2h-3.2zM73.6 76.8h3.2v3.2h-3.2zM76.8 76.8h3.2v3.2h-3.2z" transform="translate(18 18)" fill="#000000"/>
+          <text x="116" y="48" font-size="14" fill="#ffffff">Scan it with your phone</text>
+          <text x="116" y="72" font-size="13" fill="#94a3b8" font-weight="600">Download on your phone</text>
+          <rect x="116" y="84" width="156" height="6" rx="3" fill="#334155"/>
+          <rect x="116" y="84" width="104" height="6" rx="3" fill="#38bdf8"/>
+        </g>
+      </g>
+    </g>
+  </g>
+
+  <!-- agarre izquierdo: stick arriba, cruceta abajo -->
+  <g>
+    <circle cx="300" cy="520" r="74" fill="#0d0e12"/>
+    <circle cx="300" cy="520" r="58" fill="url(#stickTop)"/>
+    <circle cx="300" cy="520" r="40" fill="none" stroke="#2f323b" stroke-width="3"/>
+    <g fill="#1f2128" stroke="#3a3d47" stroke-width="2">
+      <rect x="280" y="640" width="40" height="110" rx="8"/>
+      <rect x="245" y="675" width="110" height="40" rx="8"/>
+    </g>
+    <rect x="390" y="430" width="34" height="18" rx="6" fill="#2a2d36"/>
+  </g>
+
+  <!-- agarre derecho: botones arriba, stick abajo -->
+  <g font-family="'Segoe UI', Arial, sans-serif" font-weight="700" font-size="22" text-anchor="middle">
+    <g fill="#1f2128" stroke="#3a3d47" stroke-width="2">
+      <circle cx="1300" cy="470" r="26"/>
+      <circle cx="1300" cy="580" r="26"/>
+      <circle cx="1245" cy="525" r="26"/>
+      <circle cx="1355" cy="525" r="26"/>
+    </g>
+    <g fill="#cbd5e1">
+      <text x="1300" y="478">Y</text>
+      <text x="1300" y="588">A</text>
+      <text x="1245" y="533">X</text>
+      <text x="1355" y="533">B</text>
+    </g>
+    <circle cx="1300" cy="705" r="74" fill="#0d0e12"/>
+    <circle cx="1300" cy="705" r="58" fill="url(#stickTop)"/>
+    <circle cx="1300" cy="705" r="40" fill="none" stroke="#2f323b" stroke-width="3"/>
+    <rect x="1176" y="430" width="34" height="18" rx="6" fill="#2a2d36"/>
+  </g>
+
+  <!-- rejillas de altavoz -->
+  <g fill="#0b0c10">
+    <circle cx="400" cy="790" r="4"/><circle cx="414" cy="790" r="4"/><circle cx="428" cy="790" r="4"/>
+    <circle cx="400" cy="804" r="4"/><circle cx="414" cy="804" r="4"/><circle cx="428" cy="804" r="4"/>
+    <circle cx="1172" cy="790" r="4"/><circle cx="1186" cy="790" r="4"/><circle cx="1200" cy="790" r="4"/>
+    <circle cx="1172" cy="804" r="4"/><circle cx="1186" cy="804" r="4"/><circle cx="1200" cy="804" r="4"/>
+  </g>
+</svg>
