@@ -1,0 +1,92 @@
+name: Build
+
+# Compila el frontend y empaqueta gpu-screen-recorder (AppImage) en cada push / PR.
+# Al subir una etiqueta vX.Y.Z publica una release con el ZIP instalable.
+
+on:
+  push:
+    branches: [main]
+    tags: ["v*"]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+env:
+  # AppImage no oficial de GPU Screen Recorder (pkgforge-dev), fijada por versión y hash
+  GSR_URL: https://github.com/pkgforge-dev/gpu-screen-recorder-AppImage/releases/download/6.1.6%402026-11-01_1793557730/gpu-screen-recorder-6.1.6-anylinux-x86_64.AppImage
+  GSR_SHA256: 87d4ed70a6578d8a1dc727d27051ac166ff31ccfea8bba4312e1368631d921a8
+  # Nombre de la carpeta dentro del ZIP. No cambiarlo: Decky lo usa como carpeta del plugin.
+  PLUGIN_DIR: decky-recorder-gsr
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Build frontend
+        run: |
+          pnpm install --frozen-lockfile
+          pnpm run build
+
+      - name: Validate Python backend
+        run: python3 -m py_compile main.py py_modules/*.py
+
+      - name: Fetch GPU Screen Recorder AppImage
+        run: |
+          mkdir -p bin
+          curl -sSL "$GSR_URL" -o bin/gpu-screen-recorder.AppImage
+          echo "${GSR_SHA256}  bin/gpu-screen-recorder.AppImage" | sha256sum -c -
+          chmod +x bin/gpu-screen-recorder.AppImage
+
+      - name: Package
+        id: package
+        run: |
+          VERSION=$(node -p "require('./package.json').version")
+          if [ "${GITHUB_REF_TYPE}" = "tag" ] && [ "${GITHUB_REF_NAME}" != "v${VERSION}" ]; then
+            echo "::error::Tag ${GITHUB_REF_NAME} does not match package.json version ${VERSION}"; exit 1
+          fi
+          P="out/${PLUGIN_DIR}"
+          mkdir -p "$P/dist" "$P/bin" "$P/py_modules"
+          cp py_modules/*.py "$P/py_modules/"
+          cp dist/index.js "$P/dist/"
+          cp bin/gpu-screen-recorder.AppImage "$P/bin/"
+          cp main.py plugin.json package.json LICENSE THIRD_PARTY_NOTICES.md README.md "$P/"
+          ZIP="decky-recorder-v${VERSION}.zip"
+          (cd out && zip -r "../${ZIP}" "${PLUGIN_DIR}")
+          unzip -l "$ZIP"
+          echo "zip=${ZIP}" >> "$GITHUB_OUTPUT"
+          echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ${{ steps.package.outputs.zip }}
+          path: ${{ steps.package.outputs.zip }}
+
+      - name: Extract release notes from CHANGELOG
+        if: startsWith(github.ref, 'refs/tags/v')
+        run: |
+          awk -v v="${{ steps.package.outputs.version }}" '
+            $0 ~ "^## \[" v "\]" {on=1; next}
+            on && /^## \[/ {exit}
+            on {print}
+          ' CHANGELOG.md > release-notes.md
+          cat release-notes.md
+
+      - name: Publish release
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: ${{ steps.package.outputs.zip }}
+          body_path: release-notes.md

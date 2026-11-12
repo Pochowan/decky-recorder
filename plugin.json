@@ -1,0 +1,15 @@
+{
+  "name": "Decky Recorder GSR",
+  "author": "Pochowan",
+  "flags": ["root"],
+  "api_version": 1,
+  "publish": {
+    "tags": [
+      "recording",
+      "video",
+      "clips"
+    ],
+    "description": "Lightweight game recording and instant replay clips at a steady 60 fps, powered by GPU Screen Recorder (hardware VA-API encoding, constant frame rate).",
+    "image": ""
+  }
+}
