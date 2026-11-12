@@ -19,6 +19,8 @@ Arquitectura:
   - Los ficheros se guardan en ~/Videos/Decky Recorder.
 """
 
+from __future__ import annotations
+
 import asyncio
 import json
 import os
@@ -32,7 +34,7 @@ from datetime import datetime
 
 import decky  # provisto por Decky Loader
 
-from media_server import MediaServer, mp4_info
+from media_server import MediaServer, lan_ip, mp4_info
 
 PLUGIN_DIR = decky.DECKY_PLUGIN_DIR
 SETTINGS_DIR = decky.DECKY_PLUGIN_SETTINGS_DIR
@@ -53,6 +55,16 @@ QUALITIES = ("medium", "high", "very_high", "ultra")
 FPS_OPTIONS = (30, 60, 72, 90, 100, 120, 144)
 FPS_MODES = ("cfr", "content")
 VIDEO_EXTS = (".mp4", ".mkv")
+
+STREAM_SERVICES = {
+    "twitch": "rtmp://live.twitch.tv/app/",
+    "youtube": "rtmp://a.rtmp.youtube.com/live2/",
+    "custom": None,
+}
+STREAM_RESOLUTIONS = {"original": None, "1080": "1920x1080", "720": "1280x720"}
+STREAM_KEY_FILE = os.path.join(SETTINGS_DIR, "stream_key")
+STREAM_KEY_IMPORT = os.path.join(USER_HOME, "stream_key.txt")
+SHARE_TTL = 15 * 60  # segundos que vive un enlace de compartir por red local
 CODECS = ("h264", "hevc")
 LANGUAGES = ("auto", "es", "en")
 
@@ -68,6 +80,13 @@ DEFAULT_SETTINGS = {
     "replay_autostart": False,
     "output_dir": os.path.join(USER_HOME, "Videos", "Decky Recorder"),
     "language": "auto",
+    # Directo (RTMP). La clave de emisión NO va aquí: se guarda aparte (STREAM_KEY_FILE, 0600).
+    "stream_service": "twitch",
+    "stream_custom_url": "",
+    "stream_bitrate": 6000,       # kbps, constante (CBR)
+    "stream_fps": 60,
+    "stream_resolution": "1080",  # "original" | "1080" | "720" (máximo; mantiene la proporción)
+    "stream_save_copy": False,
 }
 
 SAFE_NAME = re.compile(r"[^\w\-. ()\[\]]+", re.UNICODE)
@@ -90,8 +109,22 @@ def _sanitize(s: dict) -> dict:
         out["quality"] = DEFAULT_SETTINGS["quality"]
     if out["codec"] not in CODECS:
         out["codec"] = DEFAULT_SETTINGS["codec"]
-    for k in ("hdr", "audio_game", "audio_mic", "replay_autostart"):
+    for k in ("hdr", "audio_game", "audio_mic", "replay_autostart", "stream_save_copy"):
         out[k] = bool(out[k])
+    if out["stream_service"] not in STREAM_SERVICES:
+        out["stream_service"] = "twitch"
+    url = out["stream_custom_url"] if isinstance(out["stream_custom_url"], str) else ""
+    out["stream_custom_url"] = url.strip()[:500]
+    try:
+        out["stream_bitrate"] = int(min(max(int(out["stream_bitrate"]), 1000), 20000))
+    except (TypeError, ValueError):
+        out["stream_bitrate"] = 6000
+    try:
+        out["stream_fps"] = 30 if int(out["stream_fps"]) <= 30 else 60
+    except (TypeError, ValueError):
+        out["stream_fps"] = 60
+    if out["stream_resolution"] not in STREAM_RESOLUTIONS:
+        out["stream_resolution"] = "1080"
     out["replay_seconds"] = int(min(max(int(out["replay_seconds"]), 5), 300))
     if out["language"] not in LANGUAGES:
         out["language"] = "auto"
@@ -196,13 +229,19 @@ class Plugin:
         self.display_mode = "x11"
         self.current_app = None  # {"appid", "name"}
         self.info_cache = {}  # nombre -> (mtime, tamaño, mp4_info)
-        self.media = MediaServer(lambda: self.settings["output_dir"], decky.logger)
+        get_dir = lambda: self.settings["output_dir"]  # noqa: E731
+        self.media = MediaServer(get_dir, "127.0.0.1", decky.logger)  # reproductor en Steam
+        self.local_token = self.media.add_token()
+        self.lan = MediaServer(get_dir, "0.0.0.0", decky.logger)  # compartir por QR, solo bajo demanda
 
         self.rec_proc = None          # grabación normal (proceso propio)
         self.rec_file = None
         self.rec_started = 0.0
         self.replay_proc = None       # buffer de repetición
-        self.replay_recording = False  # grabación normal dentro del proceso de replay (SIGRTMIN)
+        self.stream_proc = None       # emisión en directo (RTMP)
+        self.stream_started = 0.0
+        self.replay_recording = False  # grabación normal dentro del proceso de replay/directo (SIGRTMIN)
+        self._ro_before = {}
         self.watchers = set()
 
         try:
@@ -213,10 +252,12 @@ class Plugin:
         decky.logger.info(f"Decky Recorder cargado (gsr: {self.gsr_bin or 'no disponible'})")
 
     async def _unload(self):
-        if getattr(self, "media", None):
-            await asyncio.to_thread(self.media.stop)
+        for srv in (getattr(self, "media", None), getattr(self, "lan", None)):
+            if srv:
+                await asyncio.to_thread(srv.stop)
         await self._stop_proc(self.rec_proc)
         await self._stop_proc(self.replay_proc)
+        await self._stop_proc(self.stream_proc)
         for t in list(self.watchers):
             t.cancel()
 
@@ -347,32 +388,51 @@ class Plugin:
             args += ["-a", "|".join(sources), "-ac", "aac"]
         return args
 
-    async def _spawn(self, args: list):
+    @staticmethod
+    async def _pump(stream, secret: str | None):
+        """Copia la salida de GSR al log, tachando la clave de emisión si aparece."""
+        with open(GSR_LOG, "ab") as log:
+            while True:
+                line = await stream.readline()
+                if not line:
+                    break
+                if secret:
+                    line = line.replace(secret.encode(), b"****")
+                log.write(line)
+                log.flush()
+
+    async def _spawn(self, args: list, secret: str | None = None):
         if not self.gsr_bin:
             raise RuntimeError(self.gsr_error or "gpu-screen-recorder no disponible")
         cmd = self._as_user() + self.gsr_bin + args
-        decky.logger.info("gsr: " + " ".join(cmd))
+        shown_cmd = " ".join(cmd)
+        if secret:
+            shown_cmd = shown_cmd.replace(secret, "****")
+        decky.logger.info("gsr: " + shown_cmd)
         os.makedirs(LOG_DIR, exist_ok=True)
         # X11 (Xwayland de gamescope) primero; si no puede crear la ventana, Wayland de gamescope
         for mode in (self.display_mode, "wayland" if self.display_mode == "x11" else "x11"):
             env = self._gsr_env(mode)
             shown = {k: env.get(k) for k in ("DISPLAY", "XAUTHORITY", "WAYLAND_DISPLAY",
                                              "XDG_SESSION_TYPE", "XDG_RUNTIME_DIR")}
-            log = open(GSR_LOG, "ab")
-            log.write(f"\n==== {datetime.now().isoformat()} [{mode}] {shown}\n{' '.join(cmd)}\n".encode())
-            log.flush()
-            try:
-                proc = await asyncio.create_subprocess_exec(
-                    *cmd, stdin=asyncio.subprocess.DEVNULL, stdout=log, stderr=log,
-                    env=env, cwd=USER_HOME, start_new_session=True)
-            finally:
-                log.close()
+            with open(GSR_LOG, "ab") as log:
+                log.write(f"\n==== {datetime.now().isoformat()} [{mode}] {shown}\n{shown_cmd}\n".encode())
+            proc = await asyncio.create_subprocess_exec(
+                *cmd, stdin=asyncio.subprocess.DEVNULL, stdout=asyncio.subprocess.PIPE,
+                stderr=asyncio.subprocess.STDOUT, env=env, cwd=USER_HOME, start_new_session=True)
+            pump = asyncio.get_event_loop().create_task(self._pump(proc.stdout, secret))
+            self.watchers.add(pump)
+            pump.add_done_callback(self.watchers.discard)
             # Si muere en el primer segundo y medio es un error de arranque (captura, codificador…)
             try:
                 await asyncio.wait_for(proc.wait(), timeout=1.5)
             except asyncio.TimeoutError:
                 self.display_mode = mode  # recordar el que funciona
                 return proc
+            try:
+                await asyncio.wait_for(pump, timeout=2)  # que el log tenga ya el error
+            except asyncio.TimeoutError:
+                pass
             tail = " ".join(self._log_tail(3)).lower()
             if "failed to create window" not in tail and "connect to the" not in tail:
                 break  # el fallo no es de display: no tiene sentido reintentar
@@ -417,6 +477,13 @@ class Plugin:
                 self.replay_proc = None
                 self.replay_recording = False
                 await decky.emit("recorder_error", " | ".join(self._log_tail(3)))
+            elif kind == "stream" and self.stream_proc is proc:
+                self.stream_proc = None
+                if self.replay_recording:
+                    self.replay_recording = False
+                    await self._collect_new(self.settings["output_dir"], self._ro_before,
+                                            self._game_label(), timeout=3)
+                await decky.emit("stream_error", " | ".join(self._log_tail(3)))
 
     async def _finish_file(self, path):
         if path and os.path.isfile(path):
@@ -478,7 +545,9 @@ class Plugin:
 
     def _state(self) -> dict:
         recording = (self.rec_proc is not None and self.rec_proc.returncode is None) or self.replay_recording
-        replay = self.replay_proc is not None and self.replay_proc.returncode is None
+        replay = self._running(self.replay_proc)
+        streaming = self._running(self.stream_proc)
+        key = self._stream_key()
         return {
             "settings": self.settings,
             "available": bool(self.gsr_bin),
@@ -487,8 +556,23 @@ class Plugin:
             "recording_since": self.rec_started if recording else 0,
             "now": time.time(),
             "replay": replay,
+            "streaming": streaming,
+            "stream_since": self.stream_started if streaming else 0,
+            "stream_key_set": bool(key),
+            "stream_key_hint": key[-4:] if len(key) >= 8 else "",
             "current_app": self.current_app,
         }
+
+    @staticmethod
+    def _running(proc) -> bool:
+        return proc is not None and proc.returncode is None
+
+    def _host_proc(self):
+        """Proceso GSR que puede grabar además una copia con SIGRTMIN (-ro): replay o directo."""
+        for p in (self.replay_proc, self.stream_proc):
+            if self._running(p):
+                return p
+        return None
 
     async def get_state(self):
         return self._state()
@@ -510,7 +594,8 @@ class Plugin:
 
     async def app_started(self, appid: str, name: str):
         self.current_app = {"appid": str(appid), "name": name or f"App {appid}"}
-        if self.settings["replay_autostart"] and self.replay_proc is None and self.rec_proc is None:
+        if (self.settings["replay_autostart"] and self.replay_proc is None and self.rec_proc is None
+                and self.stream_proc is None):
             try:
                 await self.set_replay(True)
             except Exception as e:  # noqa: BLE001
@@ -529,17 +614,18 @@ class Plugin:
         async with self.lock:
             out = self.settings["output_dir"]
             _makedirs_user(out)
-            # Con el buffer activo, la grabación va por el mismo proceso (SIGRTMIN)
-            if self.replay_proc is not None and self.replay_proc.returncode is None:
+            # Con el buffer o el directo activos, la grabación va por el mismo proceso (SIGRTMIN)
+            host = self._host_proc()
+            if host is not None:
                 if not self.replay_recording:
                     self._ro_before = _list_videos(out)
-                    os.kill(self.replay_proc.pid, signal.SIGRTMIN)
+                    os.kill(host.pid, signal.SIGRTMIN)
                     self.replay_recording = True
                     self.rec_started = time.time()
                     return {"state": self._state()}
-                os.kill(self.replay_proc.pid, signal.SIGRTMIN)
+                os.kill(host.pid, signal.SIGRTMIN)
                 self.replay_recording = False
-                saved = await self._collect_new(out, getattr(self, "_ro_before", {}), self._game_label())
+                saved = await self._collect_new(out, self._ro_before, self._game_label())
                 return {"state": self._state(), "saved": saved}
 
             if self.rec_proc is not None and self.rec_proc.returncode is None:
@@ -563,6 +649,8 @@ class Plugin:
             if enabled and not running:
                 if self.rec_proc is not None:
                     raise RuntimeError("busy_recording")
+                if self._running(self.stream_proc):
+                    raise RuntimeError("busy_streaming")
                 out = self.settings["output_dir"]
                 _makedirs_user(out)
                 args = self._base_args() + [
@@ -578,7 +666,7 @@ class Plugin:
                 self.replay_proc = None
                 was_recording = self.replay_recording
                 self.replay_recording = False
-                before = getattr(self, "_ro_before", {})
+                before = self._ro_before
                 await self._stop_proc(proc)
                 if was_recording:
                     await self._collect_new(self.settings["output_dir"], before, self._game_label(), timeout=3)
@@ -631,7 +719,156 @@ class Plugin:
 
     async def player_url(self, name: str, lang: str = "en"):
         await asyncio.to_thread(self.media.start)
-        return self.media.player_url(os.path.basename(name), lang)
+        return self.media.url("127.0.0.1", self.local_token, "play", os.path.basename(name), lang)
+
+    # ---- Compartir por red local (QR) ----------------------------------------
+
+    async def share_video(self, name: str, lang: str = "en"):
+        """Abre el servidor de red local con un enlace temporal a un solo vídeo."""
+        name = os.path.basename(name or "")
+        if not name.lower().endswith(VIDEO_EXTS) or not os.path.isfile(
+                os.path.join(self.settings["output_dir"], name)):
+            raise RuntimeError("bad_name")
+        ip = await asyncio.to_thread(lan_ip)
+        if not ip:
+            raise RuntimeError("no_lan")
+        await asyncio.to_thread(self.lan.start)
+        tok = self.lan.add_token(name, ttl=SHARE_TTL)
+        self._watch(self._expire_share(tok))
+        decky.logger.info(f"Compartiendo «{name}» en la red local ({ip}:{self.lan.port}) durante {SHARE_TTL // 60} min")
+        return {"url": self.lan.url(ip, tok, "share", name, lang), "token": tok, "ttl": SHARE_TTL}
+
+    async def stop_share(self, token: str = ""):
+        self.lan.revoke(token or None)
+        if not self.lan.has_tokens():
+            await asyncio.to_thread(self.lan.stop)
+        return True
+
+    async def _expire_share(self, tok: str):
+        await asyncio.sleep(SHARE_TTL + 1)
+        await self.stop_share(tok)
+
+    # ---- Directo (RTMP) -------------------------------------------------------
+
+    @staticmethod
+    def _stream_key() -> str:
+        try:
+            with open(STREAM_KEY_FILE, "r", encoding="utf-8") as f:
+                return f.read().strip()
+        except OSError:
+            return ""
+
+    @staticmethod
+    def _store_key(key: str):
+        key = (key or "").strip()
+        if any(c.isspace() for c in key) or len(key) > 400:
+            raise RuntimeError("bad_key")
+        os.makedirs(SETTINGS_DIR, exist_ok=True)
+        if not key:
+            try:
+                os.remove(STREAM_KEY_FILE)
+            except FileNotFoundError:
+                pass
+            return
+        fd = os.open(STREAM_KEY_FILE + ".tmp", os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
+        with os.fdopen(fd, "w", encoding="utf-8") as f:
+            f.write(key)
+        os.chmod(STREAM_KEY_FILE + ".tmp", 0o600)
+        os.replace(STREAM_KEY_FILE + ".tmp", STREAM_KEY_FILE)
+
+    async def set_stream_key(self, key: str):
+        self._store_key(key)
+        return self._state()
+
+    async def import_stream_key(self):
+        """Lee la clave de ~/stream_key.txt (cómodo para pegarla desde el modo escritorio)."""
+        try:
+            with open(STREAM_KEY_IMPORT, "r", encoding="utf-8") as f:
+                key = f.read(1024).strip()
+        except OSError:
+            raise RuntimeError("no_key_file")
+        if not key:
+            raise RuntimeError("no_key_file")
+        self._store_key(key)
+        return self._state()
+
+    def _stream_url(self, key: str) -> str:
+        s = self.settings
+        base = STREAM_SERVICES[s["stream_service"]]
+        if base:
+            if not key:
+                raise RuntimeError("no_key")
+            return base + key
+        url = s["stream_custom_url"]
+        if not re.match(r"^(rtmps?|srt)://", url, re.I):
+            raise RuntimeError("bad_url")
+        if "{key}" in url:
+            if not key:
+                raise RuntimeError("no_key")
+            return url.replace("{key}", key)
+        return f"{url.rstrip('/')}/{key}" if key else url
+
+    def _stream_args(self, url: str) -> list:
+        s = self.settings
+        args = [
+            "-w", "screen",
+            "-f", str(s["stream_fps"]),
+            "-fm", "cfr",
+            "-k", "h264",
+            "-bm", "cbr",
+            "-q", str(s["stream_bitrate"]),
+            "-c", "flv",
+            "-cursor", "no",
+        ]
+        res = STREAM_RESOLUTIONS[s["stream_resolution"]]
+        if res:
+            args += ["-s", res]
+        sources = []
+        if s["audio_game"]:
+            sources.append("default_output")
+        if s["audio_mic"]:
+            sources.append("default_input")
+        if sources:
+            args += ["-a", "|".join(sources), "-ac", "aac"]
+        if s["stream_save_copy"]:
+            args += ["-ro", s["output_dir"]]
+        return args + ["-o", url]
+
+    async def start_stream(self):
+        async with self.lock:
+            if self._running(self.stream_proc):
+                return self._state()
+            if self._running(self.rec_proc):
+                raise RuntimeError("busy_recording")
+            if self._running(self.replay_proc):
+                raise RuntimeError("busy_replay")
+            key = self._stream_key()
+            url = self._stream_url(key)
+            out = self.settings["output_dir"]
+            _makedirs_user(out)
+            proc = await self._spawn(self._stream_args(url), secret=key or None)
+            self.stream_proc = proc
+            self.stream_started = time.time()
+            self._watch(self._watch_exit(proc, "stream"))
+            if self.settings["stream_save_copy"]:
+                self._ro_before = _list_videos(out)
+                os.kill(proc.pid, signal.SIGRTMIN)  # empieza la copia local
+                self.replay_recording = True
+                self.rec_started = time.time()
+            return self._state()
+
+    async def stop_stream(self):
+        async with self.lock:
+            proc = self.stream_proc
+            self.stream_proc = None
+            was_recording = self.replay_recording
+            self.replay_recording = False
+            await self._stop_proc(proc)
+            saved = None
+            if was_recording:
+                saved = await self._collect_new(self.settings["output_dir"], self._ro_before,
+                                                self._game_label(), timeout=5)
+            return {"state": self._state(), "saved": saved}
 
     async def delete_video(self, name: str, limit: int = 10):
         name = os.path.basename(name or "")

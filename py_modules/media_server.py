@@ -1,11 +1,14 @@
 """
-Galería de grabaciones: datos de los vídeos y un servidor HTTP local para verlos.
+Galería de grabaciones: datos de los vídeos y servidores HTTP para verlos y compartirlos.
 
 - mp4_info(): duración y códec leyendo solo la caja `moov` del MP4 (sin ffprobe).
-- MediaServer: HTTP en 127.0.0.1 (puerto libre) con un token aleatorio en la ruta.
-  Sirve una página con un <video> y el propio fichero con soporte de Range (para
-  poder avanzar y retroceder). Solo entrega ficheros de la carpeta de grabaciones,
-  por nombre y sin subcarpetas. El frontend la abre en el navegador de Steam.
+- MediaServer: HTTP con tokens aleatorios en la ruta. Sirve una página con un
+  <video>, el fichero con soporte de Range (para avanzar y retroceder) y una
+  descarga. Solo entrega ficheros de la carpeta de grabaciones, por nombre y sin
+  subcarpetas. Se usa dos veces:
+    * local (127.0.0.1, token permanente): reproductor en el navegador de Steam.
+    * red local (0.0.0.0, solo mientras se comparte): un token por vídeo que
+      caduca, para descargarlo en el móvil escaneando un QR.
 """
 
 from __future__ import annotations
@@ -13,8 +16,10 @@ from __future__ import annotations
 import html
 import os
 import secrets
+import socket
 import struct
 import threading
+import time
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import parse_qs, quote, unquote, urlsplit
 
@@ -51,7 +56,7 @@ def mp4_info(path: str) -> dict:
     if not data:
         return out  # aún grabando (el moov se escribe al final) o fichero dañado
     i = data.find(b"mvhd")
-    if i >= 0 and i + 32 <= len(data):
+    if i >= 0 and i + 36 <= len(data):
         version = data[i + 4]
         try:
             if version == 1:
@@ -71,14 +76,35 @@ def mp4_info(path: str) -> dict:
     return out
 
 
-PLAYER_ERROR = {
-    "es": "El navegador de Steam no puede reproducir este vídeo (probablemente HEVC o HDR). "
-          "Ábrelo en el modo escritorio o en otro dispositivo.",
-    "en": "Steam's browser can't play this video (probably HEVC or HDR). "
-          "Open it in Desktop Mode or on another device.",
+def lan_ip() -> str | None:
+    """IP de la interfaz con la ruta por defecto (no envía nada: UDP sin datos)."""
+    s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    try:
+        s.connect(("192.0.2.1", 9))  # TEST-NET-1: solo para elegir interfaz
+        ip = s.getsockname()[0]
+        return None if ip.startswith("127.") else ip
+    except OSError:
+        return None
+    finally:
+        s.close()
+
+
+TEXT = {
+    "es": {
+        "play_error": "El navegador no puede reproducir este vídeo (probablemente HEVC o HDR). "
+                      "Descárgalo y ábrelo con otro reproductor.",
+        "download": "Descargar vídeo",
+        "share_note": "Enlace temporal de Decky Recorder: deja de funcionar al cerrar el código QR.",
+    },
+    "en": {
+        "play_error": "This browser can't play this video (probably HEVC or HDR). "
+                      "Download it and open it with another player.",
+        "download": "Download video",
+        "share_note": "Temporary Decky Recorder link: it stops working when the QR code is closed.",
+    },
 }
 
-PLAYER_PAGE = """<!doctype html>
+PAGE = """<!doctype html>
 <html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>{title}</title>
 <style>
@@ -95,26 +121,80 @@ v.addEventListener('error',()=>{{v.style.display='none';document.getElementById(
 </script></body></html>
 """
 
+SHARE_PAGE = """<!doctype html>
+<html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>{title}</title>
+<style>
+body{{margin:0;background:#111;color:#eee;font-family:system-ui,sans-serif;padding:16px}}
+h1{{font-size:1.1em;word-break:break-word;margin:0 0 12px}}
+video{{width:100%;max-height:60vh;background:#000;border-radius:8px}}
+a.b{{display:block;margin:16px 0;padding:14px;border-radius:10px;background:#1a9fff;color:#fff;
+text-align:center;text-decoration:none;font-weight:600;font-size:1.1em}}
+p{{color:#999;font-size:.9em}}
+</style></head>
+<body><h1>{title}</h1>
+<video src="../file/{src}" controls playsinline preload="metadata"></video>
+<a class="b" href="../dl/{src}" download="{attr}">{download}</a>
+<p>{size} · {note}</p>
+</body></html>
+"""
+
+
+def _fmt_size(n: int) -> str:
+    return f"{n / 1024 ** 3:.1f} GB" if n >= 1024 ** 3 else f"{n / 1024 ** 2:.1f} MB"
+
 
 class MediaServer:
-    def __init__(self, get_dir, logger=None):
+    """Servidor HTTP de vídeos. Rutas: /<token>/<play|file|share|dl>/<nombre>."""
+
+    def __init__(self, get_dir, host="127.0.0.1", logger=None):
         self.get_dir = get_dir  # callable -> carpeta de grabaciones actual
+        self.host = host
         self.log = logger
-        self.token = secrets.token_urlsafe(18)
+        self.tokens: dict = {}  # token -> {"name": str | None, "expires": float | None}
+        self.lock = threading.Lock()
         self.httpd = None
         self.thread = None
 
-    @property
-    def base_url(self) -> str | None:
-        if not self.httpd:
-            return None
-        return f"http://127.0.0.1:{self.httpd.server_address[1]}/{self.token}"
+    # ---- tokens ------------------------------------------------------------
 
-    def player_url(self, name: str, lang: str) -> str | None:
-        base = self.base_url
-        if not base:
-            return None
-        return f"{base}/play/{quote(name)}?l={quote(lang)}"
+    def add_token(self, name: str | None = None, ttl: float | None = None) -> str:
+        tok = secrets.token_urlsafe(18)
+        with self.lock:
+            self.tokens[tok] = {"name": name, "expires": time.time() + ttl if ttl else None}
+        return tok
+
+    def revoke(self, tok: str | None = None):
+        with self.lock:
+            if tok is None:
+                self.tokens.clear()
+            else:
+                self.tokens.pop(tok, None)
+
+    def _check(self, tok: str, name: str) -> bool:
+        now = time.time()
+        with self.lock:
+            for t, info in list(self.tokens.items()):
+                if info["expires"] and info["expires"] < now:
+                    del self.tokens[t]
+            for t, info in self.tokens.items():
+                if secrets.compare_digest(t, tok):
+                    return info["name"] is None or info["name"] == name
+        return False
+
+    def has_tokens(self) -> bool:
+        now = time.time()
+        with self.lock:
+            return any(not i["expires"] or i["expires"] >= now for i in self.tokens.values())
+
+    @property
+    def port(self) -> int | None:
+        return self.httpd.server_address[1] if self.httpd else None
+
+    def url(self, host: str, tok: str, kind: str, name: str, lang: str = "en") -> str:
+        return f"http://{host}:{self.port}/{tok}/{kind}/{quote(name)}?l={quote(lang)}"
+
+    # ---- servidor ----------------------------------------------------------
 
     def start(self):
         if self.httpd:
@@ -146,35 +226,42 @@ class MediaServer:
                 path = os.path.join(server.get_dir(), name)
                 return path if os.path.isfile(path) else None
 
+            def _html(self, body: str, head: bool):
+                data = body.encode()
+                self.send_response(200)
+                self.send_header("Content-Type", "text/html; charset=utf-8")
+                self.send_header("Content-Length", str(len(data)))
+                self.send_header("Cache-Control", "no-store")
+                self.end_headers()
+                if not head:
+                    self.wfile.write(data)
+
             def _handle(self, head: bool):
                 url = urlsplit(self.path)
                 parts = url.path.split("/")
-                if len(parts) != 4 or not secrets.compare_digest(parts[1], server.token):
+                if len(parts) != 4:
                     return self._fail(404)
-                kind, name = parts[2], unquote(parts[3])
+                tok, kind, name = parts[1], parts[2], unquote(parts[3])
+                if not server._check(tok, name):
+                    return self._fail(404)
                 path = self._resolve(name)
                 if not path:
                     return self._fail(404)
+                lang = (parse_qs(url.query).get("l") or ["en"])[0]
+                txt = TEXT.get(lang, TEXT["en"])
                 if kind == "play":
-                    lang = (parse_qs(url.query).get("l") or ["en"])[0]
-                    body = PLAYER_PAGE.format(
-                        title=html.escape(name),
-                        src=quote(name),
-                        error=html.escape(PLAYER_ERROR.get(lang, PLAYER_ERROR["en"])),
-                    ).encode()
-                    self.send_response(200)
-                    self.send_header("Content-Type", "text/html; charset=utf-8")
-                    self.send_header("Content-Length", str(len(body)))
-                    self.send_header("Cache-Control", "no-store")
-                    self.end_headers()
-                    if not head:
-                        self.wfile.write(body)
-                    return
-                if kind == "file":
-                    return self._send_file(path, head)
+                    return self._html(PAGE.format(title=html.escape(name), src=quote(name),
+                                                  error=html.escape(txt["play_error"])), head)
+                if kind == "share":
+                    return self._html(SHARE_PAGE.format(
+                        title=html.escape(name), src=quote(name), attr=html.escape(name, quote=True),
+                        download=html.escape(txt["download"]), size=_fmt_size(os.path.getsize(path)),
+                        note=html.escape(txt["share_note"])), head)
+                if kind in ("file", "dl"):
+                    return self._send_file(path, head, attachment=(kind == "dl"))
                 return self._fail(404)
 
-            def _send_file(self, path: str, head: bool):
+            def _send_file(self, path: str, head: bool, attachment: bool):
                 size = os.path.getsize(path)
                 start, end = 0, size - 1
                 rng = self.headers.get("Range")
@@ -202,6 +289,10 @@ class MediaServer:
                 self.send_header("Content-Type", VIDEO_TYPES[os.path.splitext(path)[1].lower()])
                 self.send_header("Accept-Ranges", "bytes")
                 self.send_header("Content-Length", str(length))
+                if attachment:
+                    name = os.path.basename(path)
+                    self.send_header("Content-Disposition",
+                                     f"attachment; filename*=UTF-8''{quote(name)}")
                 if partial:
                     self.send_header("Content-Range", f"bytes {start}-{end}/{size}")
                 self.end_headers()
@@ -220,15 +311,18 @@ class MediaServer:
                 except (BrokenPipeError, ConnectionResetError):
                     pass  # el reproductor cortó la petición al buscar
 
-        self.httpd = ThreadingHTTPServer(("127.0.0.1", 0), Handler)
+        self.httpd = ThreadingHTTPServer((self.host, 0), Handler)
         self.httpd.daemon_threads = True
-        self.thread = threading.Thread(target=self.httpd.serve_forever, name="decky-recorder-http", daemon=True)
+        self.thread = threading.Thread(target=self.httpd.serve_forever, name=f"decky-recorder-http-{self.host}",
+                                       daemon=True)
         self.thread.start()
         if self.log:
-            self.log.info(f"Servidor de vídeos en 127.0.0.1:{self.httpd.server_address[1]}")
+            self.log.info(f"Servidor de vídeos en {self.host}:{self.port}")
 
     def stop(self):
         if self.httpd:
             self.httpd.shutdown()
             self.httpd.server_close()
             self.httpd = None
+            if self.log:
+                self.log.info(f"Servidor de vídeos en {self.host} detenido")

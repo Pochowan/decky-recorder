@@ -9,6 +9,8 @@ basada en [GPU Screen Recorder](https://git.dec05eba.com/gpu-screen-recorder/abo
   aunque los FPS del juego varíen.
 - **Ligero:** captura KMS de la imagen que compone gamescope, codificada en la GPU (VA-API).
 - **Repetición instantánea:** guarda en memoria los últimos 5–300 segundos y conviértelos en un clip.
+- **Directo** en Twitch, YouTube Live o tu propio servidor RTMP, con copia local opcional.
+- **Compartir con QR:** escanéalo con el móvil (misma red) para ver o descargar una grabación.
 - H.264 o HEVC, HDR opcional (HEVC 10 bits), audio del juego y micrófono.
 - Los vídeos se guardan en `~/Videos/Decky Recorder` y puedes verlos o borrarlos desde el panel
   (se abren en el navegador de Steam; se recomienda H.264, HEVC/HDR puede no reproducirse ahí).

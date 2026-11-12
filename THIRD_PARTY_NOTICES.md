@@ -17,3 +17,10 @@ each under its own license) comes from the unofficial pkgforge-dev build.
 
 - Project: https://github.com/pkgforge-dev/gpu-screen-recorder-AppImage
 - Version: 6.1.6 (release `6.1.6@2026-11-01_1793557730`)
+
+## qrcode-generator — Kazuhiko Arase
+
+Bundled in `dist/index.js` to draw the QR codes for sharing recordings.
+
+- Project: https://github.com/kazuhikoarase/qrcode-generator
+- License: MIT — Copyright (c) 2009 Kazuhiko Arase

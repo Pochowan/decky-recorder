@@ -9,6 +9,8 @@ powered by [GPU Screen Recorder](https://git.dec05eba.com/gpu-screen-recorder/ab
   when the game's frame rate varies.
 - **Light on performance:** KMS capture of the screen composed by gamescope, encoded on the GPU (VA-API).
 - **Instant replay:** keep the last 5–300 seconds in memory and save them as a clip.
+- **Live streaming** to Twitch, YouTube Live or your own RTMP server, with an optional local copy.
+- **Share with a QR code:** scan it with your phone (same network) to watch or download a recording.
 - H.264 or HEVC, optional HDR (HEVC 10-bit), game audio and microphone.
 - Videos are saved in `~/Videos/Decky Recorder`, and you can play or delete them from the panel
   (playback opens in Steam's browser; H.264 is recommended, HEVC/HDR may not play there).
