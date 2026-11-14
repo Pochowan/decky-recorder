@@ -29,6 +29,8 @@ A [Decky Loader](https://github.com/SteamDeckHomebrew/decky-loader) plugin power
 - **Recordings gallery.** Play your videos in Steam's browser without leaving Game Mode, or delete them.
 - **Share with a QR code.** Scan it with your phone (same network) to watch or download a recording.
   The link is temporary and only works for that video.
+- **PC access.** Turn it on and open the short address in your PC's browser, enter the PIN and
+  download any recording. It turns itself off after 30 minutes.
 - H.264 or HEVC, optional HDR (HEVC 10-bit), game audio and microphone.
 - Videos are saved in `~/Videos/Decky Recorder`.
 - Interface in English and Spanish.

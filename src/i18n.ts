@@ -113,6 +113,16 @@ const es = {
   share_title: "Escanéalo con el móvil",
   share_desc: "El móvil tiene que estar en la misma red. El enlace caduca en {min} min o al cerrar esta ventana.",
   close: "Cerrar",
+  sec_pc: "Acceso desde el PC",
+  pc_toggle: "Acceso desde el PC",
+  pc_desc: "Abre en el navegador de tu PC (misma red) una lista con todas tus grabaciones para verlas o descargarlas. Pide un PIN y se apaga solo a los 30 min.",
+  pc_url: "Dirección",
+  pc_pin: "PIN",
+  pc_left: "Se apaga en {min} min",
+  pc_qr: "Abrir la lista en el móvil (QR)",
+  pc_qr_title: "Todas tus grabaciones en el móvil",
+  pc_qr_desc: "Escanéalo con el móvil en la misma red: entra directamente, sin escribir el PIN.",
+  pc_closed: "Acceso desde el PC cerrado por demasiados PIN incorrectos.",
 };
 
 export type Key = keyof typeof es;
@@ -223,6 +233,16 @@ const en: Dict = {
   share_title: "Scan it with your phone",
   share_desc: "Your phone must be on the same network. The link expires in {min} min or when you close this window.",
   close: "Close",
+  sec_pc: "PC access",
+  pc_toggle: "PC access",
+  pc_desc: "Opens a list of all your recordings in your PC's browser (same network) to watch or download them. It asks for a PIN and turns itself off after 30 min.",
+  pc_url: "Address",
+  pc_pin: "PIN",
+  pc_left: "Turns off in {min} min",
+  pc_qr: "Open the list on your phone (QR)",
+  pc_qr_title: "All your recordings on your phone",
+  pc_qr_desc: "Scan it with your phone on the same network: it signs in directly, no PIN needed.",
+  pc_closed: "PC access was closed after too many wrong PINs.",
 };
 
 const STRINGS: Record<Lang, Dict> = { es, en };

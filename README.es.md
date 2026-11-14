@@ -29,6 +29,8 @@ Plugin para [Decky Loader](https://github.com/SteamDeckHomebrew/decky-loader) ba
 - **Galería de grabaciones.** Ve tus vídeos en el navegador de Steam sin salir del modo juego, o bórralos.
 - **Compartir con QR.** Escanéalo con el móvil (misma red) para ver o descargar una grabación.
   El enlace es temporal y solo sirve para ese vídeo.
+- **Acceso desde el PC.** Actívalo, abre la dirección corta en el navegador del PC, escribe el PIN y
+  descarga cualquier grabación. Se apaga solo a los 30 minutos.
 - H.264 o HEVC, HDR opcional (HEVC 10 bits), audio del juego y micrófono.
 - Los vídeos se guardan en `~/Videos/Decky Recorder`.
 - Interfaz en español e inglés.

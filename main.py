@@ -34,7 +34,7 @@ from datetime import datetime
 
 import decky  # provisto por Decky Loader
 
-from media_server import MediaServer, lan_ip, mp4_info
+from media_server import MediaServer, PcAccessServer, lan_ip, mp4_info
 
 PLUGIN_DIR = decky.DECKY_PLUGIN_DIR
 SETTINGS_DIR = decky.DECKY_PLUGIN_SETTINGS_DIR
@@ -65,6 +65,7 @@ STREAM_RESOLUTIONS = {"original": None, "1080": "1920x1080", "720": "1280x720"}
 STREAM_KEY_FILE = os.path.join(SETTINGS_DIR, "stream_key")
 STREAM_KEY_IMPORT = os.path.join(USER_HOME, "stream_key.txt")
 SHARE_TTL = 15 * 60  # segundos que vive un enlace de compartir por red local
+PC_TTL = 30 * 60     # segundos que dura el acceso desde el PC
 CODECS = ("h264", "hevc")
 LANGUAGES = ("auto", "es", "en")
 
@@ -233,6 +234,10 @@ class Plugin:
         self.media = MediaServer(get_dir, "127.0.0.1", decky.logger)  # reproductor en Steam
         self.local_token = self.media.add_token()
         self.lan = MediaServer(get_dir, "0.0.0.0", decky.logger)  # compartir por QR, solo bajo demanda
+        self.pc = PcAccessServer(get_dir, self._scan_videos, decky.logger, on_abuse=self._pc_abuse)
+        self.pc_ip = None
+        self.pc_task = None
+        self.loop = asyncio.get_event_loop()
 
         self.rec_proc = None          # grabación normal (proceso propio)
         self.rec_file = None
@@ -252,7 +257,7 @@ class Plugin:
         decky.logger.info(f"Decky Recorder cargado (gsr: {self.gsr_bin or 'no disponible'})")
 
     async def _unload(self):
-        for srv in (getattr(self, "media", None), getattr(self, "lan", None)):
+        for srv in (getattr(self, "media", None), getattr(self, "lan", None), getattr(self, "pc", None)):
             if srv:
                 await asyncio.to_thread(srv.stop)
         await self._stop_proc(self.rec_proc)
@@ -561,6 +566,7 @@ class Plugin:
             "stream_key_set": bool(key),
             "stream_key_hint": key[-4:] if len(key) >= 8 else "",
             "current_app": self.current_app,
+            "pc_access": self._pc_state(),
         }
 
     @staticmethod
@@ -743,6 +749,44 @@ class Plugin:
         if not self.lan.has_tokens():
             await asyncio.to_thread(self.lan.stop)
         return True
+
+    # ---- Acceso desde el PC (dirección corta + PIN) -----------------------------
+
+    def _pc_state(self) -> dict:
+        pc = getattr(self, "pc", None)
+        if not pc or not pc.active or not self.pc_ip:
+            return {"active": False}
+        base = f"http://{self.pc_ip}:{pc.port}"
+        return {"active": True, "url": base, "pin": pc.pin, "remaining": pc.remaining(),
+                "qr_url": f"{base}/login?pin={pc.pin}"}
+
+    def _pc_abuse(self):
+        # Llamado desde el hilo del servidor: avisar al frontend desde el bucle de asyncio
+        asyncio.run_coroutine_threadsafe(decky.emit("pc_access_closed"), self.loop)
+
+    async def set_pc_access(self, enabled: bool, lang: str = "en"):
+        if self.pc_task:
+            self.pc_task.cancel()
+            self.pc_task = None
+        if not enabled:
+            await asyncio.to_thread(self.pc.stop)
+            return self._state()
+        ip = await asyncio.to_thread(lan_ip)
+        if not ip:
+            raise RuntimeError("no_lan")
+        self.pc_ip = ip
+        await asyncio.to_thread(self.pc.start, PC_TTL, lang)
+        self.pc_task = asyncio.get_event_loop().create_task(self._expire_pc())
+        decky.logger.info(f"Acceso desde el PC en http://{ip}:{self.pc.port} durante {PC_TTL // 60} min")
+        return self._state()
+
+    async def _expire_pc(self):
+        try:
+            await asyncio.sleep(PC_TTL + 1)
+        except asyncio.CancelledError:
+            return
+        self.pc_task = None
+        await asyncio.to_thread(self.pc.stop)
 
     async def _expire_share(self, tok: str):
         await asyncio.sleep(SHARE_TTL + 1)

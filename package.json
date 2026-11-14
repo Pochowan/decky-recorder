@@ -1,6 +1,6 @@
 {
   "name": "decky-recorder-gsr",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Game recording and instant replay for Decky Loader, powered by GPU Screen Recorder",
   "type": "module",
   "scripts": {

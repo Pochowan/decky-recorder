@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.2.0] - 2026-11-14
+
+- PC access: a short local-network address and a 6-digit PIN open a web page with all your
+  recordings, to watch or download them from a PC's browser. Session cookie (HttpOnly,
+  SameSite=Strict), new PIN every time, 5 wrong PINs lock that IP for 2 minutes and 30 in total
+  close the access. It turns itself off after 30 minutes or from the panel, and offers a QR code
+  to open the same list on a phone.
+
 ## [0.1.0] - 2026-11-12
 
 - First version: start/stop recording, instant replay buffer with "save clip",

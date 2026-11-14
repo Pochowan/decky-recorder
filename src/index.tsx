@@ -55,7 +55,10 @@ type State = {
   stream_key_set: boolean;
   stream_key_hint: string;
   current_app: { appid: string; name: string } | null;
+  pc_access: PcAccess;
 };
+
+type PcAccess = { active: boolean; url?: string; pin?: string; remaining?: number; qr_url?: string };
 
 type ShareInfo = { url: string; token: string; ttl: number };
 
@@ -87,6 +90,7 @@ const setStreamKey = callable<[string], State>("set_stream_key");
 const importStreamKey = callable<[], State>("import_stream_key");
 const startStream = callable<[], State>("start_stream");
 const stopStream = callable<[], ActionResult>("stop_stream");
+const setPcAccess = callable<[boolean, string], State>("set_pc_access");
 
 /** Idioma de la interfaz de Steam (para la opción "Automático"). */
 function steamLanguage(): Lang {
@@ -421,6 +425,83 @@ function StreamSection({
   );
 }
 
+function PcQrModal({ url, closeModal }: { url: string; closeModal?: () => void }) {
+  return (
+    <ModalRoot onCancel={closeModal} closeModal={closeModal}>
+      <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+        <div className={staticClasses.Title} style={{ textAlign: "center" }}>
+          {t("pc_qr_title")}
+        </div>
+        <QrCode text={url} />
+        <div style={{ textAlign: "center", fontSize: "13px" }}>{t("pc_qr_desc")}</div>
+        <DialogButton onClick={closeModal}>{t("close")}</DialogButton>
+      </div>
+    </ModalRoot>
+  );
+}
+
+function PcAccessSection({
+  state,
+  setState,
+  run,
+  busy,
+}: {
+  state: State;
+  setState: (s: State) => void;
+  run: (fn: () => Promise<void>) => Promise<void>;
+  busy: boolean;
+}) {
+  const pc = state.pc_access;
+  const big: React.CSSProperties = {
+    fontSize: "20px",
+    fontWeight: 700,
+    letterSpacing: "0.04em",
+    userSelect: "all",
+    whiteSpace: "nowrap",
+    width: "100%",
+  };
+  return (
+    <PanelSection title={t("sec_pc")}>
+      <PanelSectionRow>
+        <ToggleField
+          label={t("pc_toggle")}
+          description={t("pc_desc")}
+          checked={pc.active}
+          disabled={busy}
+          onChange={(v) => run(async () => setState(await setPcAccess(v, currentLang)))}
+        />
+      </PanelSectionRow>
+      {pc.active && pc.url && pc.pin && (
+        <>
+          <PanelSectionRow>
+            <Field
+              label={t("pc_url")}
+              description={t("pc_left", { min: Math.max(1, Math.ceil((pc.remaining ?? 0) / 60)) })}
+              childrenLayout="below"
+            >
+              <div style={{ ...big, fontSize: "15px" }}>{pc.url.replace("http://", "")}</div>
+            </Field>
+          </PanelSectionRow>
+          <PanelSectionRow>
+            <Field label={t("pc_pin")} childrenLayout="below">
+              <div style={{ ...big, fontSize: "26px", letterSpacing: "0.2em" }}>
+                {pc.pin.slice(0, 3)} {pc.pin.slice(3)}
+              </div>
+            </Field>
+          </PanelSectionRow>
+          {pc.qr_url && (
+            <PanelSectionRow>
+              <ButtonItem layout="below" onClick={() => showModal(<PcQrModal url={pc.qr_url!} />)}>
+                {t("pc_qr")}
+              </ButtonItem>
+            </PanelSectionRow>
+          )}
+        </>
+      )}
+    </PanelSection>
+  );
+}
+
 const PAGE = 8;
 
 function Gallery({ refreshKey }: { refreshKey: number }) {
@@ -736,6 +817,8 @@ function Content() {
 
       <Gallery refreshKey={galleryKey} />
 
+      <PcAccessSection state={state} setState={setState} run={run} busy={busy} />
+
       <PanelSection title={t("sec_settings")}>
         <PanelSectionRow>
           <DropdownItem
@@ -837,6 +920,8 @@ export default definePlugin(() => {
   const onStreamError = (msg: string) =>
     toaster.toast({ title: t("toast_stream_error"), body: msg || "—", duration: 10000 });
   addEventListener<[string]>("stream_error", onStreamError);
+  const onPcClosed = () => toaster.toast({ title: t("sec_pc"), body: t("pc_closed"), duration: 10000 });
+  addEventListener("pc_access_closed", onPcClosed);
 
   return {
     name: "Decky Recorder",
@@ -847,6 +932,7 @@ export default definePlugin(() => {
       reg?.unregister?.();
       removeEventListener("recorder_error", onError);
       removeEventListener("stream_error", onStreamError);
+      removeEventListener("pc_access_closed", onPcClosed);
     },
   };
 });
