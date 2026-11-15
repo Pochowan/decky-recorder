@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.3.0] - 2026-11-15
+
+- New option "Fix colors in HDR games": forces gamescope composition (GAMESCOPE_COMPOSITE_FORCE,
+  the same switch as Steam's "Force Composite") only while recording, streaming or with instant
+  replay on. In HDR games gamescope often sends the game's image straight to the display and the
+  color conversion happens in the display hardware, so KMS capture got reddish, dark colors.
+  Off by default because it uses a bit more battery. The previous value is restored afterwards,
+  and it is left alone if Steam's own option was already on.
+
 ## [0.2.0] - 2026-11-14
 
 - PC access: a short local-network address and a 6-digit PIN open a web page with all your

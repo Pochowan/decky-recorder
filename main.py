@@ -66,6 +66,7 @@ STREAM_KEY_FILE = os.path.join(SETTINGS_DIR, "stream_key")
 STREAM_KEY_IMPORT = os.path.join(USER_HOME, "stream_key.txt")
 SHARE_TTL = 15 * 60  # segundos que vive un enlace de compartir por red local
 PC_TTL = 30 * 60     # segundos que dura el acceso desde el PC
+ATOM_COMPOSITE = "GAMESCOPE_COMPOSITE_FORCE"
 CODECS = ("h264", "hevc")
 LANGUAGES = ("auto", "es", "en")
 
@@ -88,6 +89,8 @@ DEFAULT_SETTINGS = {
     "stream_fps": 60,
     "stream_resolution": "1080",  # "original" | "1080" | "720" (máximo; mantiene la proporción)
     "stream_save_copy": False,
+    # Forzar composición de gamescope mientras se captura (colores correctos en juegos HDR)
+    "force_composite": False,
 }
 
 SAFE_NAME = re.compile(r"[^\w\-. ()\[\]]+", re.UNICODE)
@@ -110,7 +113,7 @@ def _sanitize(s: dict) -> dict:
         out["quality"] = DEFAULT_SETTINGS["quality"]
     if out["codec"] not in CODECS:
         out["codec"] = DEFAULT_SETTINGS["codec"]
-    for k in ("hdr", "audio_game", "audio_mic", "replay_autostart", "stream_save_copy"):
+    for k in ("hdr", "audio_game", "audio_mic", "replay_autostart", "stream_save_copy", "force_composite"):
         out[k] = bool(out[k])
     if out["stream_service"] not in STREAM_SERVICES:
         out["stream_service"] = "twitch"
@@ -238,6 +241,8 @@ class Plugin:
         self.pc_ip = None
         self.pc_task = None
         self.loop = asyncio.get_event_loop()
+        self.composite_owned = False   # True si el plugin activó la composición forzada
+        self.composite_prev = None     # valor que había antes (None = la propiedad no existía)
 
         self.rec_proc = None          # grabación normal (proceso propio)
         self.rec_file = None
@@ -263,6 +268,7 @@ class Plugin:
         await self._stop_proc(self.rec_proc)
         await self._stop_proc(self.replay_proc)
         await self._stop_proc(self.stream_proc)
+        await self._sync_composite(force_off=True)
         for t in list(self.watchers):
             t.cancel()
 
@@ -415,6 +421,7 @@ class Plugin:
             shown_cmd = shown_cmd.replace(secret, "****")
         decky.logger.info("gsr: " + shown_cmd)
         os.makedirs(LOG_DIR, exist_ok=True)
+        await self._sync_composite(starting=True)  # antes del primer fotograma
         # X11 (Xwayland de gamescope) primero; si no puede crear la ventana, Wayland de gamescope
         for mode in (self.display_mode, "wayland" if self.display_mode == "x11" else "x11"):
             env = self._gsr_env(mode)
@@ -441,20 +448,78 @@ class Plugin:
             tail = " ".join(self._log_tail(3)).lower()
             if "failed to create window" not in tail and "connect to the" not in tail:
                 break  # el fallo no es de display: no tiene sentido reintentar
+        await self._sync_composite()  # no arrancó: deshacer la composición forzada
         raise RuntimeError(f"gpu-screen-recorder terminó al arrancar ({proc.returncode}): "
                            + " | ".join(self._log_tail(4)))
 
     async def _stop_proc(self, proc, timeout=10.0):
-        if not proc or proc.returncode is not None:
-            return
+        if proc and proc.returncode is None:
+            try:
+                proc.send_signal(signal.SIGINT)
+                await asyncio.wait_for(proc.wait(), timeout=timeout)
+            except asyncio.TimeoutError:
+                proc.kill()
+                await proc.wait()
+            except ProcessLookupError:
+                pass
+        await self._sync_composite()
+
+    # ---- Composición forzada de gamescope -------------------------------------
+    # En juegos HDR gamescope suele enviar la imagen del juego directamente a la pantalla
+    # (direct scanout) y la conversión de color la hace el hardware de pantalla. La captura
+    # KMS toma el búfer antes de esa conversión y los colores salen mal. Con
+    # GAMESCOPE_COMPOSITE_FORCE=1 (lo mismo que "Forzar composición" de Steam) gamescope
+    # compone él mismo cada fotograma y la captura sale bien, a cambio de algo de batería.
+
+    def _capturing(self) -> bool:
+        return any(self._running(p) for p in (self.rec_proc, self.replay_proc, self.stream_proc))
+
+    # El Xwayland de gamescope solo admite conexiones del usuario de la sesión (no de root),
+    # así que xprop se ejecuta como el usuario, sin capacidades.
+
+    def _xprop(self, args: list) -> str:
+        uid, gid = _user_ids()
+        cmd = [self.setpriv, f"--reuid={uid}", f"--regid={gid}", "--init-groups", "--", "xprop", "-root"] + args
+        r = subprocess.run(cmd, env=self._gsr_env("x11"), capture_output=True, timeout=5)
+        if r.returncode != 0:
+            err = (r.stderr or r.stdout).decode(errors="ignore").strip()
+            raise RuntimeError(f"xprop {' '.join(args)} -> {r.returncode}: {err[-300:]}")
+        return r.stdout.decode(errors="ignore")
+
+    @staticmethod
+    def _parse_cardinal(out: str):
+        """'NAME(CARDINAL) = 1' -> 1; 'NAME:  not found.' -> None."""
+        m = re.search(r"=\s*(\d+)", out)
+        return int(m.group(1)) if m else None
+
+    def _composite_get(self):
+        return self._parse_cardinal(self._xprop([ATOM_COMPOSITE]))
+
+    def _composite_set(self, value):
+        if value is None:
+            self._xprop(["-remove", ATOM_COMPOSITE])
+        else:
+            self._xprop(["-f", ATOM_COMPOSITE, "32c", "-set", ATOM_COMPOSITE, str(int(value))])
+
+    async def _sync_composite(self, starting: bool = False, force_off: bool = False):
+        want = (not force_off and self.settings.get("force_composite", False)
+                and (starting or self._capturing()))
         try:
-            proc.send_signal(signal.SIGINT)
-            await asyncio.wait_for(proc.wait(), timeout=timeout)
-        except asyncio.TimeoutError:
-            proc.kill()
-            await proc.wait()
-        except ProcessLookupError:
-            pass
+            if want and not self.composite_owned:
+                prev = await asyncio.to_thread(self._composite_get)
+                self.composite_prev = prev
+                if prev != 1:  # si Steam ya lo tenía activado, no hay nada que hacer ni que restaurar
+                    await asyncio.to_thread(self._composite_set, 1)
+                    self.composite_owned = True
+                    now = await asyncio.to_thread(self._composite_get)
+                    decky.logger.info(f"Composición forzada de gamescope activada para capturar "
+                                      f"(antes={prev}, ahora={now})")
+            elif not want and self.composite_owned:
+                await asyncio.to_thread(self._composite_set, self.composite_prev)
+                self.composite_owned = False
+                decky.logger.info(f"Composición forzada de gamescope restaurada ({self.composite_prev})")
+        except Exception as e:  # noqa: BLE001
+            decky.logger.error(f"No se pudo cambiar GAMESCOPE_COMPOSITE_FORCE: {e}")
 
     def _log_tail(self, n=6):
         try:
@@ -489,6 +554,7 @@ class Plugin:
                     await self._collect_new(self.settings["output_dir"], self._ro_before,
                                             self._game_label(), timeout=3)
                 await decky.emit("stream_error", " | ".join(self._log_tail(3)))
+            await self._sync_composite()
 
     async def _finish_file(self, path):
         if path and os.path.isfile(path):
@@ -590,6 +656,7 @@ class Plugin:
             changed = any(new[k] != self.settings[k] for k in capture_keys)
             self.settings = new
             self._save()
+            await self._sync_composite()  # activar/quitar al momento si ya se está capturando
             restart = (changed and self.replay_proc is not None and self.replay_proc.returncode is None
                        and not self.replay_recording and self.rec_proc is None)
         # Si el buffer está activo, reiniciarlo para aplicar los cambios de captura

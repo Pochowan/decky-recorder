@@ -67,6 +67,8 @@ A [Decky Loader](https://github.com/SteamDeckHomebrew/decky-loader) plugin power
   `~/stream_key.txt`, use **Import from ~/stream_key.txt** and delete the file afterwards.
 - **Streaming bandwidth:** Twitch accepts up to 6000 kbps. Your upload speed needs to be comfortably
   higher than the bitrate you choose.
+- **HDR games:** if a recording of an HDR game comes out reddish or dark, turn on **Fix colors in
+  HDR games** in the capture settings. It only applies while capturing and uses a bit more battery.
 
 ## How it works
 

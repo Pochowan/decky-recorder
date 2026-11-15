@@ -67,6 +67,8 @@ Plugin para [Decky Loader](https://github.com/SteamDeckHomebrew/decky-loader) ba
   `~/stream_key.txt`, usa **Importar de ~/stream_key.txt** y borra el archivo después.
 - **Ancho de banda del directo:** Twitch acepta hasta 6000 kbps. Tu velocidad de subida tiene que superar
   con margen el bitrate que elijas.
+- **Juegos HDR:** si la grabación de un juego HDR sale rojiza u oscura, activa **Corregir colores en
+  juegos HDR** en los ajustes de captura. Solo actúa mientras capturas y consume algo más de batería.
 
 ## Cómo funciona
 

@@ -40,6 +40,7 @@ type Settings = {
   stream_fps: number;
   stream_resolution: "original" | "1080" | "720";
   stream_save_copy: boolean;
+  force_composite: boolean;
 };
 
 type State = {
@@ -866,6 +867,14 @@ function Content() {
         </PanelSectionRow>
         <PanelSectionRow>
           <ToggleField label={t("hdr")} description={t("hdr_desc")} checked={s.hdr} onChange={(v) => update({ hdr: v })} />
+        </PanelSectionRow>
+        <PanelSectionRow>
+          <ToggleField
+            label={t("force_composite")}
+            description={t("force_composite_desc")}
+            checked={s.force_composite}
+            onChange={(v) => update({ force_composite: v })}
+          />
         </PanelSectionRow>
         <PanelSectionRow>
           <ToggleField label={t("audio_game")} checked={s.audio_game} onChange={(v) => update({ audio_game: v })} />
